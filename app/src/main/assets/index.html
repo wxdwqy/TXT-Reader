@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>极简TXT阅读器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f0;
+            color: #333;
+            line-height: 1.8;
+            font-size: 18px;
+        }
+        
+        /* 顶部工具栏 */
+        .toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-bottom: 1px solid #ddd;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .toolbar-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #555;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 50%;
+        }
+        
+        .toolbar-btns {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #4a90d9;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .btn:active {
+            background: #357abd;
+        }
+        
+        .btn-secondary {
+            background: #999;
+        }
+        
+        .btn-secondary:active {
+            background: #777;
+        }
+        
+        .btn-success {
+            background: #5cb85c;
+        }
+        
+        .btn-success:active {
+            background: #4cae4c;
+        }
+        
+        /* 主内容区 */
+        .content {
+            margin-top: 60px;
+            padding: 20px 15px 100px;
+            min-height: 100vh;
+        }
+        
+        /* 阅读模式 */
+        .read-mode {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            text-align: justify;
+        }
+        
+        /* 编辑模式 */
+        .edit-mode {
+            width: 100%;
+            min-height: 80vh;
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+            color: inherit;
+            resize: none;
+            outline: none;
+            padding: 0;
+        }
+        
+        /* 文件列表面板 */
+        .file-panel {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+        }
+        
+        .file-panel-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            width: 90%;
+            max-height: 80%;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .file-panel-header {
+            padding: 15px;
+            background: #f8f8f8;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .file-panel-header h3 {
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .file-list {
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .file-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .file-item:active {
+            background: #f0f7ff;
+        }
+        
+        .file-icon {
+            font-size: 24px;
+        }
+        
+        .file-info {
+            flex: 1;
+        }
+        
+        .file-name {
+            font-size: 16px;
+            color: #333;
+            word-break: break-all;
+        }
+        
+        .file-size {
+            font-size: 12px;
+            color: #999;
+            margin-top: 2px;
+        }
+        
+        .file-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        
+        .file-empty-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        /* 设置面板 */
+        .settings-panel {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+        }
+        
+        .settings-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            max-height: 70%;
+            overflow-y: auto;
+        }
+        
+        .settings-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .setting-label {
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .setting-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .font-size-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid #ddd;
+            background: white;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        
+        .font-size-value {
+            font-size: 16px;
+            min-width: 30px;
+            text-align: center;
+        }
+        
+        .color-option {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+        
+        .color-option.active {
+            border-color: #4a90d9;
+        }
+        
+        /* 主题 */
+        .theme-light { background: #f5f5f0; color: #333; }
+        .theme-dark { background: #1a1a2e; color: #e0e0e0; }
+        .theme-sepia { background: #f4ecd8; color: #5b4636; }
+        .theme-green { background: #e8f5e9; color: #2e7d32; }
+        
+        /* 提示消息 */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 300;
+            display: none;
+        }
+        
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 100px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        
+        .empty-state-text {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .empty-state-hint {
+            font-size: 14px;
+            color: #bbb;
+        }
+    </style>
+</head>
+<body class="theme-light">
+    <!-- 顶部工具栏 -->
+    <div class="toolbar">
+        <div class="toolbar-title" id="currentFile">未打开文件</div>
+        <div class="toolbar-btns">
+            <button class="btn btn-secondary" onclick="showFiles()" title="打开文件">📂</button>
+            <button class="btn btn-secondary" onclick="toggleEdit()" id="editBtn" title="编辑">✏️</button>
+            <button class="btn btn-success" onclick="saveFile()" id="saveBtn" style="display:none" title="保存">💾</button>
+            <button class="btn btn-secondary" onclick="showSettings()" title="设置">⚙️</button>
+        </div>
+    </div>
+    
+    <!-- 主内容 -->
+    <div class="content" id="content">
+        <div class="empty-state">
+            <div class="empty-state-icon">📖</div>
+            <div class="empty-state-text">极简TXT阅读器</div>
+            <div class="empty-state-hint">点击 📂 打开文件</div>
+            <div style="margin-top:30px; padding:15px; background:rgba(74,144,217,0.1); border-radius:10px; text-align:left; font-size:14px; color:#666; max-width:300px; margin-left:auto; margin-right:auto;">
+                <div style="font-weight:bold; margin-bottom:10px; color:#4a90d9;">📁 APK版使用说明</div>
+                <div style="margin-bottom:8px;">1. 安装APP并允许存储权限</div>
+                <div style="margin-bottom:8px;">2. 将TXT文件放入：</div>
+                <div style="background:rgba(255,255,255,0.7); padding:8px; border-radius:4px; font-family:monospace; font-size:12px; color:#333; margin-bottom:8px;">
+                    Documents/极简TXT阅读器/
+                </div>
+                <div>3. APP自动扫描，点开即看！</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 文件列表面板 -->
+    <div class="file-panel" id="filePanel" onclick="hideFiles(event)">
+        <div class="file-panel-content">
+            <div class="file-panel-header">
+                <h3>📂 选择TXT文件</h3>
+                <button class="btn btn-secondary" onclick="hideFilesDirect()">关闭</button>
+            </div>
+            <div class="file-list" id="fileList">
+                <div class="file-empty">
+                    <div class="file-empty-icon">📁</div>
+                    <div>正在扫描...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 设置面板 -->
+    <div class="settings-panel" id="settingsPanel" onclick="hideSettings(event)">
+        <div class="settings-content" onclick="event.stopPropagation()">
+            <div class="settings-title">⚙️ 阅读设置</div>
+            
+            <div class="setting-item">
+                <span class="setting-label">字体大小</span>
+                <div class="setting-control">
+                    <button class="font-size-btn" onclick="changeFontSize(-2)">−</button>
+                    <span class="font-size-value" id="fontSizeValue">18</span>
+                    <button class="font-size-btn" onclick="changeFontSize(2)">+</button>
+                </div>
+            </div>
+            
+            <div class="setting-item">
+                <span class="setting-label">背景主题</span>
+                <div class="setting-control">
+                    <div class="color-option active" style="background:#f5f5f0" onclick="setTheme('light')" title="白天"></div>
+                    <div class="color-option" style="background:#1a1a2e" onclick="setTheme('dark')" title="夜间"></div>
+                    <div class="color-option" style="background:#f4ecd8" onclick="setTheme('sepia')" title="护眼"></div>
+                    <div class="color-option" style="background:#e8f5e9" onclick="setTheme('green')" title="绿色"></div>
+                </div>
+            </div>
+            
+            <div class="setting-item">
+                <span class="setting-label">行间距</span>
+                <div class="setting-control">
+                    <button class="font-size-btn" onclick="changeLineHeight(-0.2)">−</button>
+                    <span class="font-size-value" id="lineHeightValue">1.8</span>
+                    <button class="font-size-btn" onclick="changeLineHeight(0.2)">+</button>
+                </div>
+            </div>
+            
+            <div style="text-align:center; margin-top:20px;">
+                <button class="btn" onclick="hideSettingsDirect()">完成</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 提示 -->
+    <div class="toast" id="toast"></div>
+    
+    <!-- 隐藏的文件输入 -->
+    <input type="file" id="fileInput" accept=".txt" style="display:none" onchange="handleFileSelect(event)">
+
+    <script>
+        // 状态
+        let currentFileName = '';
+        let currentContent = '';
+        let isEditing = false;
+        let fontSize = 18;
+        let lineHeight = 1.8;
+        let currentTheme = 'light';
+        
+        // 显示提示
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 2000);
+        }
+        
+        // 显示文件列表
+        function showFiles() {
+            document.getElementById('filePanel').style.display = 'block';
+            scanFiles();
+        }
+        
+        function hideFiles(e) {
+            if (e.target === e.currentTarget) hideFilesDirect();
+        }
+        
+        function hideFilesDirect() {
+            document.getElementById('filePanel').style.display = 'none';
+        }
+        
+        // 扫描文件（使用文件选择器）
+        function scanFiles() {
+            const list = document.getElementById('fileList');
+            list.innerHTML = `
+                <div class="file-empty">
+                    <div class="file-empty-icon">📂</div>
+                    <div>请点击下方按钮选择文件</div>
+                    <div style="margin-top:15px;">
+                        <button class="btn" onclick="document.getElementById('fileInput').click()">选择TXT文件</button>
+                    </div>
+                    <div style="margin-top:20px; padding:15px; background:#f0f7ff; border-radius:8px; text-align:left; font-size:13px; color:#666;">
+                        <div style="font-weight:bold; margin-bottom:8px; color:#333;">💡 提示（APK版）</div>
+                        <div>安装后，APP会自动使用文件夹：</div>
+                        <div style="background:#fff; padding:8px; margin:8px 0; border-radius:4px; font-family:monospace; color:#4a90d9;">
+                            Documents/极简TXT阅读器/
+                        </div>
+                        <div>把TXT文件放到这里，APP就能自动扫描到！</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 处理文件选择
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                currentFileName = file.name;
+                currentContent = event.target.result;
+                isEditing = false;
+                
+                document.getElementById('currentFile').textContent = file.name;
+                document.getElementById('editBtn').textContent = '✏️';
+                document.getElementById('saveBtn').style.display = 'none';
+                
+                renderContent();
+                hideFilesDirect();
+                showToast('已打开: ' + file.name);
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+        
+        // 渲染内容
+        function renderContent() {
+            const content = document.getElementById('content');
+            if (isEditing) {
+                content.innerHTML = `<textarea class="edit-mode" id="editor">${escapeHtml(currentContent)}</textarea>`;
+            } else {
+                content.innerHTML = `<div class="read-mode">${escapeHtml(currentContent)}</div>`;
+            }
+            applyStyles();
+        }
+        
+        // 转义HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // 切换编辑模式
+        function toggleEdit() {
+            if (!currentFileName) {
+                showToast('请先打开一个文件');
+                return;
+            }
+            
+            if (isEditing) {
+                // 退出编辑，保存到内存
+                const editor = document.getElementById('editor');
+                if (editor) currentContent = editor.value;
+                isEditing = false;
+                document.getElementById('editBtn').textContent = '✏️';
+                document.getElementById('saveBtn').style.display = 'none';
+            } else {
+                isEditing = true;
+                document.getElementById('editBtn').textContent = '👁️';
+                document.getElementById('saveBtn').style.display = 'inline-block';
+            }
+            renderContent();
+        }
+        
+        // 保存文件
+        function saveFile() {
+            if (!isEditing) return;
+            
+            const editor = document.getElementById('editor');
+            if (editor) currentContent = editor.value;
+            
+            // 创建下载
+            const blob = new Blob([currentContent], { type: 'text/plain;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = currentFileName || '未命名.txt';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            
+            showToast('已保存: ' + currentFileName);
+        }
+        
+        // 显示设置
+        function showSettings() {
+            document.getElementById('settingsPanel').style.display = 'block';
+        }
+        
+        function hideSettings(e) {
+            if (e.target === e.currentTarget) hideSettingsDirect();
+        }
+        
+        function hideSettingsDirect() {
+            document.getElementById('settingsPanel').style.display = 'none';
+        }
+        
+        // 改变字体大小
+        function changeFontSize(delta) {
+            fontSize = Math.max(12, Math.min(32, fontSize + delta));
+            document.getElementById('fontSizeValue').textContent = fontSize;
+            applyStyles();
+        }
+        
+        // 改变行间距
+        function changeLineHeight(delta) {
+            lineHeight = Math.max(1.0, Math.min(3.0, lineHeight + delta));
+            document.getElementById('lineHeightValue').textContent = lineHeight.toFixed(1);
+            applyStyles();
+        }
+        
+        // 设置主题
+        function setTheme(theme) {
+            document.body.className = 'theme-' + theme;
+            currentTheme = theme;
+            
+            // 更新选中状态
+            document.querySelectorAll('.color-option').forEach((el, i) => {
+                el.classList.toggle('active', 
+                    (theme === 'light' && i === 0) ||
+                    (theme === 'dark' && i === 1) ||
+                    (theme === 'sepia' && i === 2) ||
+                    (theme === 'green' && i === 3)
+                );
+            });
+        }
+        
+        // 应用样式
+        function applyStyles() {
+            const content = document.querySelector('.read-mode, .edit-mode');
+            if (content) {
+                content.style.fontSize = fontSize + 'px';
+                content.style.lineHeight = lineHeight;
+            }
+        }
+        
+        // 键盘快捷键
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+S 保存
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                if (isEditing) saveFile();
+            }
+        });
+        
+        // 防止页面滚动反弹（iOS）
+        document.body.addEventListener('touchmove', function(e) {
+            if (e.target.closest('.file-list, .settings-content')) return;
+        }, { passive: false });
+    </script>
+</body>
+</html>
