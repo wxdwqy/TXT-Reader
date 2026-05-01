@@ -1,4 +1,4 @@
-package com.support.webapp_to_webview;
+package com.yunzhu.txtreader;
 
 import androidx.appcompat.app.AppCompatActivity;
 import android.view.View;
